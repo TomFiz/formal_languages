@@ -1,0 +1,5 @@
+cython==3.0.12
+numpy==2.2.4
+setuptools==78.1.0
+toml==0.10.2
+tqdm==4.67.1
