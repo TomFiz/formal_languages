@@ -1,4 +1,5 @@
-import random
+import numpy.random as rd
+import numpy as np
 from typing import List, Dict, Optional
 
 class Language:
@@ -57,12 +58,19 @@ class Dyck(Language):
             max_depth: Maximum nesting depth allowed
             p: Probability of generating an opening bracket during sampling
         """
+
         self.max_depth = max_depth
         self.opening = opening
         self.closing = closing
         self.p = p
         self.char_to_int = {c: i for i, c in enumerate(opening + closing)}
         self.tokenizer = Tokenizer(self.char_to_int, len(self.char_to_int), len(self.char_to_int) + 1)
+
+        assert self.max_depth > 0, "Max depth must be positive"
+        assert self.p >= 0 and self.p <= 1, "Probability p must be between 0 and 1"
+        assert len(self.opening) == len(self.closing), "Opening and closing brackets must match in length"
+        assert len(self.opening) == len(set(self.opening)), "Opening brackets must be unique"
+        assert len(self.closing) == len(set(self.closing)), "Closing brackets must be unique"
 
     def sample(self, length: int, seed: Optional[int]) -> str:
         """
@@ -75,15 +83,17 @@ class Dyck(Language):
         Returns:
             A valid Dyck word
         """
+        assert length % 2 == 0, "Length must be even for Dyck words"
+
         sequence = []
         stack = []
-        random.seed(seed)
+        rd.seed(seed)
 
         while len(sequence) < length:
-            if (stack and random.random() > self.p) or len(stack) >= min(self.max_depth, length - len(sequence)):
+            if (stack and rd.random() > self.p) or len(stack) >= min(self.max_depth, length - len(sequence)):
                 sequence.append(self.closing[stack.pop()])
             else:
-                opening_index = random.randint(0, len(self.opening) - 1)
+                opening_index = rd.randint(0, len(self.opening))
                 opening_char = self.opening[opening_index]
                 sequence.append(opening_char)
                 stack.append(opening_index)
@@ -157,31 +167,65 @@ class ShuffleDyck(Dyck):
     can match any previous opening bracket of the same type.
     """
     
-    def sample(self, length: int, seed: Optional[int]) -> str:
+    def sample(self, length: int, distribution: Optional[str]="type-uniform", seed: Optional[int]=42, penalty: Optional[float]=1, verbose: Optional[bool]=False) -> str:
         """
         Sample a valid Shuffle-Dyck word of the specified length.
         
         Args:
             length: The length of the sequence to generate
+            distribution: The distribution of closing brackets
+             - type-uniform : pick a random type of opened bracket to close according to a uniform distribution, then pop the first occurrence of that type
+             - bracket-uniform : pick a random bracket to close according to a uniform distribution, then pop that bracket
+             - length_penalty : pick a random type of opened bracket to close according to a length penalty distribution, then pop the first occurrence of that type
+            penalty: Penalty for closing brackets based on their length : 0 means no penalty, +inf means the longest opened bracket is always closed first
             seed: Random seed for reproducibility
+            verbose: If True, print additional information during sampling
             
         Returns:
             A valid Shuffle-Dyck word
         """
         sequence = []
         stack = []
-        random.seed(seed)
+        stack_pointers = {key: [] for key in range(len(self.opening))}
+        rd.seed(seed)
 
         while len(sequence) < length:
-            if stack and random.random() > self.p or len(stack) >= min(self.max_depth, length - len(sequence)):
-                closing_index = stack.pop(random.randint(0, len(stack) - 1))
+            if stack and rd.random() > self.p or len(stack) >= min(self.max_depth, length - len(sequence)):
+                if distribution == 'type-uniform':
+                    # Randomly select a type of opened bracket to close
+                    closing_bracket_type = list(set(stack))[rd.randint(0, len(set(stack)))]
+                    # Pop the first occurrence of that type
+                    closing_index = stack.pop(stack.index(closing_bracket_type))
+                elif distribution == 'bracket-uniform':
+                    closing_index = stack.pop(rd.randint(0, len(stack)))
+                elif distribution == 'length-penalty':
+                    # Get the length of the actually opened brackets for each type
+                    opened_bracket_lengths = [len(sequence) - stack_pointers[i][-1] for i in stack] 
+                    probabilities = [np.tanh(penalty*length + 1e-3) for length in opened_bracket_lengths]
+                    probababilities = np.array(probabilities) / np.sum(probabilities)
+                    closing_stack_id = rd.choice(len(stack), p=probababilities)
+                    if verbose :
+                        print("Stack:", stack)
+                        print("Sequence:", sequence)
+                        print("Opened Bracket Lengths:", opened_bracket_lengths)
+                        print("Probabilities:", probababilities)
+                        if opened_bracket_lengths[closing_stack_id] == max(opened_bracket_lengths):
+                            print("Closed the longest opened bracket")
+                        else:
+                            print("Closed a shorter opened bracket")
+                    closing_index = stack.pop(closing_stack_id)
+                    if verbose:
+                        print("Closing Index:", closing_index)
+                stack_pointers[closing_index].pop()
                 closing_char = self.closing[closing_index]
                 sequence.append(closing_char)
             else:
-                opening_index = random.randint(0, len(self.opening) - 1)
+                opening_index = rd.randint(0, len(self.opening))
                 opening_char = self.opening[opening_index]
                 sequence.append(opening_char)
                 stack.append(opening_index)
+                # Store the index of the opening bracket in the sequence
+                stack_pointers[opening_index].append(len(sequence) - 1)
         return ''.join(sequence)
 
     def _enumerate_helper(self, remaining_length: int, stack: List[int], 
@@ -205,7 +249,7 @@ class ShuffleDyck(Dyck):
             for i, opening_char in enumerate(self.opening):
                 self._enumerate_helper(remaining_length - 1, stack + [i], current + [opening_char], results)
         
-        # Option 2: Close a random opened bracket
+        # Option 2: Close opened brackets
         if stack:
             for i in range(len(list(set(stack)))):
                 closing_index = stack[i]
@@ -233,15 +277,15 @@ class ShuffleDyck(Dyck):
         return all(counts[char] == 0 for char in self.opening)
 
 
-# Example usage:
-# dyck = Dyck('([', ')]', 5)
-# print("Dyck Language Sample:", dyck.sample(10, 42))
+# dyck = Dyck('([{', ')]}', 5)
+# sample = dyck.sample(14, 123)
+# print("Dyck Language Sample:", sample)
 # print("Dyck Language Enumerate:", dyck.enumerate(4))
-# print("Dyck Language Valid:", dyck.is_valid("[([])]"))
+# print("Dyck Language Valid:", dyck.is_valid(sample))
 
-# shuffleDyck = ShuffleDyck('([', ')]', 5)
-# print("Shuffle Dyck Language Sample:", shuffleDyck.sample(10, 42))
-# print("Shuffle Dyck Language Enumerate:", shuffleDyck.enumerate(4))
-# print("Shuffle Dyck Language Valid:", shuffleDyck.is_valid("[(][)]"))
-
-# print("S(3,2) =", S(3, 2))
+shuffleDyck = ShuffleDyck('([', ')]', 6)
+print("Shuffle Dyck Language Enumerate:", shuffleDyck.enumerate(4))
+print("Shuffle Dyck Language Valid:", shuffleDyck.is_valid("[(][)]"))
+print("Sample with type-uniform distribution:", shuffleDyck.sample(20, distribution='type-uniform'))
+print("Sample with bracket-uniform distribution:", shuffleDyck.sample(20, distribution='bracket-uniform'))
+print("Sample with length-penalty distribution:", shuffleDyck.sample(20, distribution='length-penalty', penalty=1.0, verbose=True))

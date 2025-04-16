@@ -1,4 +1,6 @@
 import random
+import numpy as np
+import numpy.random as rd
 from libc.stdlib cimport rand, srand, RAND_MAX
 from cpython.list cimport PyList_Append, PyList_GET_SIZE, PyList_GET_ITEM, PyList_New
 from typing import List, Dict, Optional, Set
@@ -122,6 +124,12 @@ cdef class Dyck(Language):
         self.char_to_int = {c: i for i, c in enumerate(opening + closing)}
         self.tokenizer = Tokenizer(self.char_to_int, len(self.char_to_int), len(self.char_to_int) + 1)
 
+        assert self.max_depth > 0, "Max depth must be positive"
+        assert self.p >= 0 and self.p <= 1, "Probability p must be between 0 and 1"
+        assert len(self.opening) == len(self.closing), "Opening and closing brackets must match in length"
+        assert len(self.opening) == len(set(self.opening)), "Opening brackets must be unique"
+        assert len(self.closing) == len(set(self.closing)), "Closing brackets must be unique"
+
     def sample(self, int length, seed: Optional[int]) -> str:
         """
         Sample a valid Dyck word of the specified length.
@@ -133,19 +141,21 @@ cdef class Dyck(Language):
         Returns:
             A valid Dyck word
         """
+        assert length % 2 == 0, "Length must be even for Dyck words"
+        
         cdef list sequence = []
         cdef list stack = []
         cdef int opening_index
         cdef str opening_char
         
         if seed is not None:
-            random.seed(seed)
+            rd.seed(seed)
         
         while len(sequence) < length:
-            if (stack and random.random() > self.p) or len(stack) >= min(self.max_depth, length - len(sequence)):
+            if (stack and rd.random() > self.p) or len(stack) >= min(self.max_depth, length - len(sequence)):
                 sequence.append(self.closing[stack.pop()])
             else:
-                opening_index = random.randint(0, len(self.opening) - 1)
+                opening_index = rd.randint(0, len(self.opening))
                 opening_char = self.opening[opening_index]
                 sequence.append(opening_char)
                 stack.append(opening_index)
@@ -225,37 +235,72 @@ cdef class ShuffleDyck(Dyck):
     can match any previous opening bracket of the same type.
     """
     
-    def sample(self, int length, seed: Optional[int]) -> str:
+    def sample(self, int length, str distribution="type-uniform", seed: Optional[int]=42, 
+               double penalty=1.0, bint verbose=False) -> str:
         """
         Sample a valid Shuffle-Dyck word of the specified length.
         
         Args:
             length: The length of the sequence to generate
+            distribution: The distribution of closing brackets
+             - type-uniform : pick a random type of opened bracket to close according to a uniform distribution, then pop the first occurrence of that type
+             - bracket-uniform : pick a random bracket to close according to a uniform distribution, then pop that bracket
+             - length_penalty : pick a random type of opened bracket to close according to a length penalty distribution, then pop the first occurrence of that type
+            penalty: Penalty for closing brackets based on their length : 0 means no penalty, +inf means the longest opened bracket is always closed first
             seed: Random seed for reproducibility
+            verbose: If True, print additional information during sampling
             
         Returns:
             A valid Shuffle-Dyck word
         """
         cdef list sequence = []
         cdef list stack = []
-        cdef int opening_index, closing_index, stack_idx
+        cdef dict stack_pointers = {key: [] for key in range(len(self.opening))}
+        cdef int closing_bracket_type, closing_index, opening_index, closing_stack_id
         cdef str opening_char, closing_char
+        cdef list opened_bracket_lengths, probabilities
         
         if seed is not None:
-            random.seed(seed)
+            rd.seed(seed)
 
         while len(sequence) < length:
-            if stack and random.random() > self.p or len(stack) >= min(self.max_depth, length - len(sequence)):
-                stack_idx = random.randint(0, len(stack) - 1)
-                closing_index = stack[stack_idx]
-                del stack[stack_idx]
+            if stack and rd.random() > self.p or len(stack) >= min(self.max_depth, length - len(sequence)):
+                if distribution == 'type-uniform':
+                    # Randomly select a type of opened bracket to close
+                    closing_bracket_type = list(set(stack))[rd.randint(0, len(set(stack)))]
+                    # Pop the first occurrence of that type
+                    closing_index = stack.pop(stack.index(closing_bracket_type))
+                elif distribution == 'bracket-uniform':
+                    closing_index = stack.pop(rd.randint(0, len(stack)))
+                elif distribution == 'length-penalty':
+                    # Get the length of the actually opened brackets for each type
+                    opened_bracket_lengths = [len(sequence) - stack_pointers[i][-1] for i in stack]
+                    probabilities = [np.tanh(penalty*length + 1e-3) for length in opened_bracket_lengths]
+                    probabilities = np.array(probabilities) / np.sum(probabilities)
+                    closing_stack_id = rd.choice(len(stack), p=probabilities)
+                    if verbose:
+                        print("Stack:", stack)
+                        print("Sequence:", sequence)
+                        print("Opened Bracket Lengths:", opened_bracket_lengths)
+                        print("Probabilities:", probabilities)
+                        if opened_bracket_lengths[closing_stack_id] == max(opened_bracket_lengths):
+                            print("Closed the longest opened bracket")
+                        else:
+                            print("Closed a shorter opened bracket")
+                    closing_index = stack.pop(closing_stack_id)
+                    if verbose:
+                        print("Closing Index:", closing_index)
+                
+                stack_pointers[closing_index].pop()
                 closing_char = self.closing[closing_index]
                 sequence.append(closing_char)
             else:
-                opening_index = random.randint(0, len(self.opening) - 1)
+                opening_index = rd.randint(0, len(self.opening))
                 opening_char = self.opening[opening_index]
                 sequence.append(opening_char)
                 stack.append(opening_index)
+                # Store the index of the opening bracket in the sequence
+                stack_pointers[opening_index].append(len(sequence) - 1)
         return ''.join(sequence)
 
     def _enumerate_helper(self, int remaining_length, list stack, 
@@ -271,7 +316,7 @@ cdef class ShuffleDyck(Dyck):
         """
         cdef int i, closing_index
         cdef str opening_char, closing_char
-        cdef set unique_stack_items
+        cdef list unique_stack_items
         
         if remaining_length == 0:
             if not stack:  # Stack must be empty for valid Shuffle-Dyck word
@@ -283,10 +328,11 @@ cdef class ShuffleDyck(Dyck):
             for i, opening_char in enumerate(self.opening):
                 self._enumerate_helper(remaining_length - 1, stack + [i], current + [opening_char], results)
         
-        # Option 2: Close a random opened bracket
+        # Option 2: Close opened brackets
         if stack:
-            unique_stack_items = set(stack)
-            for closing_index in unique_stack_items:
+            unique_stack_items = list(set(stack))
+            for i in range(len(unique_stack_items)):
+                closing_index = unique_stack_items[i]
                 new_stack = stack.copy()
                 new_stack.remove(closing_index)
                 closing_char = self.closing[closing_index]
@@ -315,7 +361,4 @@ cdef class ShuffleDyck(Dyck):
                     return False
                 counts[self.opening[idx]] -= 1
         
-        for char in self.opening:
-            if counts[char] != 0:
-                return False
-        return True
+        return all(counts[char] == 0 for char in self.opening)
