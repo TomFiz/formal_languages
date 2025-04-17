@@ -6,7 +6,7 @@ import numpy
 extensions = [
     Extension(
         "clanguages",  # Output module name (import as clanguages)
-        ["languages.pyx"],
+        ["./src/languages.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=["-O3"],  # Optimization flag
         language="c++"

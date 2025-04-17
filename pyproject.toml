@@ -1,3 +1,7 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=78.1.0", "cython>=3.0.12", "numpy==2.2.4"]
+
 [project]
 name = "formal-languages"
 version = "0.1.0"
@@ -5,9 +9,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [ 
-    "cython==3.0.12", 
-    "numpy==2.2.4", 
-    "setuptools==78.1.0", 
-    "toml==0.10.2", 
-    "tqdm==4.67.1",
+    "tqdm>=4.67.1",
+    "numpy>=2.2.4"
     ]

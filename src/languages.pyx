@@ -278,18 +278,7 @@ cdef class ShuffleDyck(Dyck):
                     probabilities = [np.tanh(penalty*length + 1e-3) for length in opened_bracket_lengths]
                     probabilities = np.array(probabilities) / np.sum(probabilities)
                     closing_stack_id = rd.choice(len(stack), p=probabilities)
-                    if verbose:
-                        print("Stack:", stack)
-                        print("Sequence:", sequence)
-                        print("Opened Bracket Lengths:", opened_bracket_lengths)
-                        print("Probabilities:", probabilities)
-                        if opened_bracket_lengths[closing_stack_id] == max(opened_bracket_lengths):
-                            print("Closed the longest opened bracket")
-                        else:
-                            print("Closed a shorter opened bracket")
                     closing_index = stack.pop(closing_stack_id)
-                    if verbose:
-                        print("Closing Index:", closing_index)
                 
                 stack_pointers[closing_index].pop()
                 closing_char = self.closing[closing_index]

@@ -167,7 +167,7 @@ class ShuffleDyck(Dyck):
     can match any previous opening bracket of the same type.
     """
     
-    def sample(self, length: int, distribution: Optional[str]="type-uniform", seed: Optional[int]=42, penalty: Optional[float]=1, verbose: Optional[bool]=False) -> str:
+    def sample(self, length: int, distribution: Optional[str]="type-uniform", seed: Optional[int]=42, penalty: Optional[float]=1., verbose: Optional[bool]=False) -> str:
         """
         Sample a valid Shuffle-Dyck word of the specified length.
         
@@ -277,11 +277,13 @@ class ShuffleDyck(Dyck):
         return all(counts[char] == 0 for char in self.opening)
 
 
-# dyck = Dyck('([{', ')]}', 5)
-# sample = dyck.sample(14, 123)
-# print("Dyck Language Sample:", sample)
-# print("Dyck Language Enumerate:", dyck.enumerate(4))
-# print("Dyck Language Valid:", dyck.is_valid(sample))
+dyck = Dyck('([{', ')]}', 5)
+sample = dyck.sample(14, 123)
+print("Dyck Language Sample:", sample)
+print("Dyck Language Enumerate:", dyck.enumerate(4))
+print("Dyck Language Valid:", dyck.is_valid(sample))
+
+print(("\n\n###############################################\n\n"))
 
 shuffleDyck = ShuffleDyck('([', ')]', 6)
 print("Shuffle Dyck Language Enumerate:", shuffleDyck.enumerate(4))
