@@ -78,12 +78,12 @@ def save_as_jsonl(batches, output_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("language", type=str, help="Type of language to sample from, Dyck or ShuffleDyck")
-    parser.add_argument("max_depth", type=int, help="Maximal depth of sequences")
-    parser.add_argument("vocab_size", type=int, default=64, help="Vocabulary size")
-    parser.add_argument("num_samples", type=int, help="Number of samples to generate")
-    parser.add_argument("sequence_length", type=int, help="Length of the sequences to generate")
-    parser.add_argument("output_file", type=str, help="Output file to save the samples")
+    parser.add_argument("--language", type=str, default='Dyck', help="Type of language to sample from, Dyck or ShuffleDyck")
+    parser.add_argument("--max_depth", type=int, default=5, help="Maximal depth of sequences")
+    parser.add_argument("--vocab_size", type=int, default=64, help="Vocabulary size")
+    parser.add_argument("--num_samples", type=int, default=10, help="Number of samples to generate")
+    parser.add_argument("--sequence_length", type=int, default=10, help="Length of the sequences to generate")
+    parser.add_argument("--output_file", type=str, default='output.jsonl', help="Output file to save the samples")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     
     args = parser.parse_args()

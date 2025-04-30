@@ -275,19 +275,3 @@ class ShuffleDyck(Dyck):
                     return False
                 counts[self.opening[self.closing.index(char)]] -= 1
         return all(counts[char] == 0 for char in self.opening)
-
-
-dyck = Dyck('([{', ')]}', 5)
-sample = dyck.sample(14, 123)
-print("Dyck Language Sample:", sample)
-print("Dyck Language Enumerate:", dyck.enumerate(4))
-print("Dyck Language Valid:", dyck.is_valid(sample))
-
-print(("\n\n###############################################\n\n"))
-
-shuffleDyck = ShuffleDyck('([', ')]', 6)
-print("Shuffle Dyck Language Enumerate:", shuffleDyck.enumerate(4))
-print("Shuffle Dyck Language Valid:", shuffleDyck.is_valid("[(][)]"))
-print("Sample with type-uniform distribution:", shuffleDyck.sample(20, distribution='type-uniform'))
-print("Sample with bracket-uniform distribution:", shuffleDyck.sample(20, distribution='bracket-uniform'))
-print("Sample with length-penalty distribution:", shuffleDyck.sample(20, distribution='length-penalty', penalty=1.0, verbose=True))
