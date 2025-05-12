@@ -1,6 +1,6 @@
 # Formal Languages
 
-A Python/Cython library for working with formal languages, particularly Dyck languages and their variants.
+A Python library for working with formal languages, particularly Dyck languages and their variants.
 
 ## Overview
 
@@ -9,7 +9,6 @@ This repository provides implementations of formal language classes, with a focu
 - **Dyck Language**: The language of balanced parentheses, where each closing bracket must match the most recently opened bracket of the corresponding type.
 - **Shuffle-Dyck Language**: A variant where closing brackets can match any previous opening bracket of the same type.
 
-The implementation is available in both pure Python and optimized Cython versions for performance-critical applications.
 
 ## Features
 
@@ -17,41 +16,19 @@ The implementation is available in both pure Python and optimized Cython version
 - Enumerate all valid strings of a given length
 - Validate whether a string belongs to a language
 - Encode/decode between character strings and token IDs
-- Optimized Cython implementation for performance
 
-## Installation
+## Setup
 
-### Requirements
-
-- Python 3.13+
-- Cython
-- NumPy
-- setuptools
-
-### Setup
-
-1. Clone this repository:
+ Clone this repository:
 
 ```bash
 git clone https://github.com/TomFiz/formal_languages.git
 cd formal_languages
 ```
 
-2. Install dependencies:
-
-```bash
-pip install -e .
-```
-
-3. Build the Cython extension:
-
-```bash
-python setup.py build_ext --inplace
-```
-
 ## Usage
 
-### Basic Usage (Python version)
+### Basic Usage
 
 ```python
 from languages import Dyck, ShuffleDyck
@@ -76,17 +53,6 @@ shuffle_dyck = ShuffleDyck('([', ')]', 5)
 print("Is '[(])' valid in Shuffle-Dyck?", shuffle_dyck.is_valid('[(])'))
 ```
 
-### Using the Cython Version (for performance)
-
-```python
-import clanguages as cl
-
-# The API is identical to the Python version, but with much better performance
-dyck = cl.Dyck('([', ')]', 5)
-sample = dyck.sample(100, 42)
-print("Quickly generated sample:", sample)
-```
-
 ### Working with Tokenizers
 
 ```python
@@ -107,6 +73,4 @@ print("Decoded string:", decoded)
 ## Project Structure
 
 - languages.py - Pure Python implementation of language classes
-- languages.pyx - Cython implementation for performance
-- setup.py - Build script for the Cython extension
 - pyproject.toml - Project metadata and dependencies
