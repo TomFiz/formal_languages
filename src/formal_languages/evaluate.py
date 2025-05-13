@@ -1,8 +1,8 @@
 import argparse
 import json
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+import pandas as pd # type: ignore
+import matplotlib.pyplot as plt # type: ignore
 from pathlib import Path
 from typing import List, Dict, Tuple, Any, Optional
 
@@ -54,6 +54,7 @@ def load_sequences(input_file: str, tokenizer: Tokenizer) -> List[str]:
                 if 'tokens' in data:
                     # If tokens are provided directly
                     tokens = data['tokens']
+                    support_size = pd.Series(tokens).nunique()
                     # Split into individual sequences if they're batched
                     i = 0
                     while i < len(tokens):
@@ -78,7 +79,7 @@ def load_sequences(input_file: str, tokenizer: Tokenizer) -> List[str]:
     else:
         raise ValueError(f"Unsupported file format: {ext}")
     
-    return sequences
+    return sequences, support_size
 
 
 def calculate_depth(sequence: str, opening: str, closing: str) -> int:
@@ -177,6 +178,8 @@ def generate_report(validation_results: Dict[str, Any], output_file: Optional[st
         f"Valid sequences: {stats['valid_sequences']} ({stats['valid_ratio']:.2%})",
         f"Invalid sequences: {stats['invalid_sequences']} ({1 - stats['valid_ratio']:.2%})",
         "",
+        f"Support size: {stats['support_size']}",
+        "",
         "Length Statistics:",
         f"  Expected length: {stats['expected_length']}",
         f"  Average length: {stats['avg_length']:.2f}",
@@ -209,7 +212,7 @@ def generate_report(validation_results: Dict[str, Any], output_file: Optional[st
         
         # Length distribution
         lengths = np.array(stats["lengths"])
-        ax1.hist(lengths, bins=range(min(lengths), max(lengths) + 2), alpha=0.7)
+        ax1.hist(lengths, bins=range(min(lengths) - 2, max(lengths) + 2), alpha=0.7)
         ax1.axvline(stats["expected_length"], color='r', linestyle='--', label=f'Expected ({stats["expected_length"]})')
         ax1.axvline(stats["avg_length"], color='g', linestyle='-', label=f'Average ({stats["avg_length"]:.2f})')
         ax1.set_title('Sequence Length Distribution')
@@ -219,8 +222,8 @@ def generate_report(validation_results: Dict[str, Any], output_file: Optional[st
         
         # Depth distribution
         depths = np.array(stats["depths"])
-        ax2.hist(depths, bins=range(min(depths), max(depths) + 2), alpha=0.7)
-        ax2.axvline(stats["max_allowed_depth"], color='r', linestyle='--', label=f'Max allowed ({stats["max_allowed_depth"]})')
+        ax2.hist(depths, bins=range(0, max(depths) + 2), alpha=0.7)
+        ax2.axvline(stats["max_allowed_depth"]+0.5, color='r', linestyle='--', label=f'Max allowed ({stats["max_allowed_depth"]})')
         ax2.axvline(stats["avg_depth"], color='g', linestyle='-', label=f'Average ({stats["avg_depth"]:.2f})')
         ax2.set_title('Nesting Depth Distribution')
         ax2.set_xlabel('Depth')
@@ -249,11 +252,12 @@ def main():
     print(f"Reconstructed {metadata['language']} language")
     
     # Load sequences
-    sequences = load_sequences(args.input, tokenizer)
+    sequences, support_size = load_sequences(args.input, tokenizer)
     print(f"Loaded {len(sequences)} sequences for validation")
     
     # Validate sequences
     validation_results = validate_sequences(sequences, language, metadata)
+    validation_results["summary"]["support_size"] = support_size
     
     # Generate report
     generate_report(validation_results, args.output)
