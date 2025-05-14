@@ -317,14 +317,3 @@ class ShuffleDyck(Dyck):
                     return False
                 counts[self.opening[self.closing.index(char)]] -= 1
         return all(counts[char] == 0 for char in self.opening)
-
-
-sd = ShuffleDyck(opening='([{', closing=')]}', max_depth=6, p=0.5)
-sample = sd.sample(length=10, seed=42, impose_length_closing=True, distribution='type-uniform')
-valid_sample = sd.sample_from_length_dist(length_dist={10: 0.5, 20: 0.3, 40: 0.2}, seed=123, impose_length_closing=True)
-nobodyknows_sample = sd.sample_from_length_dist(length_dist={10: 0.5, 20: 0.3, 40: 0.2}, seed=42, impose_length_closing=False)
-print("Sampled Dyck word:", sample)
-print("Sampled valid Dyck word:", valid_sample)
-print("Valid is valid:", sd.is_valid(valid_sample))
-print("Sampled Dyck word with unknown validity:", nobodyknows_sample)
-print("Sampled Dyck word with unknown validity is valid:", sd.is_valid(nobodyknows_sample))
