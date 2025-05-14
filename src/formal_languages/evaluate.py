@@ -209,7 +209,7 @@ def generate_report(validation_results: Dict[str, Any], output_file: Optional[st
         if stats["total_sequences"] > 0 :
             # Generate plots
             plot_file = Path(output_file).with_suffix('.png')
-	    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
             # Length distribution
             lengths = np.array(stats["lengths"])
@@ -218,22 +218,22 @@ def generate_report(validation_results: Dict[str, Any], output_file: Optional[st
             ax1.axvline(stats["avg_length"], color='g', linestyle='-', label=f'Average ({stats["avg_length"]:.2f})')
             ax1.set_title('Sequence Length Distribution')
             ax1.set_xlabel('Length')
-	    ax1.set_ylabel('Count')
-	    ax1.legend()
+            ax1.set_ylabel('Count')
+            ax1.legend()
 
             # Depth distribution
             depths = np.array(stats["depths"])
-	    ax2.hist(depths, bins=range(0, max(depths) + 2), alpha=0.7)
-	    ax2.axvline(stats["max_allowed_depth"]+0.5, color='r', linestyle='--', label=f'Max allowed ({stats["max_allowed_depth"]})')
+            ax2.hist(depths, bins=range(0, max(depths) + 2), alpha=0.7)
+            ax2.axvline(stats["max_allowed_depth"]+0.5, color='r', linestyle='--', label=f'Max allowed ({stats["max_allowed_depth"]})')
             ax2.axvline(stats["avg_depth"], color='g', linestyle='-', label=f'Average ({stats["avg_depth"]:.2f})')
             ax2.set_title('Nesting Depth Distribution')
             ax2.set_xlabel('Depth')
-	    ax2.set_ylabel('Count')
-	    ax2.legend()
-        
-	    plt.tight_layout()
+            ax2.set_ylabel('Count')
+            ax2.legend()
+            
+            plt.tight_layout()
             plt.savefig(plot_file)
-	    print(f"Plots saved to {plot_file}")
+            print(f"Plots saved to {plot_file}")
 
 
 def main():

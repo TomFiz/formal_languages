@@ -25,7 +25,7 @@ def generate_unique_chars(n):
     
     return opening, closing
 
-def generate_diverse_samples(language_class, opening, closing, max_depth, num_samples, sequence_length, seed=42):
+def generate_diverse_samples(language_class, opening, closing, max_depth, num_samples, sequence_length, impose_length_closing, seed=42):
     """Generate diverse samples from the language."""
     language = language_class(opening, closing, max_depth)
     samples = []
@@ -39,7 +39,8 @@ def generate_diverse_samples(language_class, opening, closing, max_depth, num_sa
         for i in range(num_samples):
             dist = distributions[i % len(distributions)]
             penalty = penalties[(i // len(distributions)) % len(penalties)] if dist == 'length-penalty' else 1.0
-            samples.append(language.sample(sequence_length, distribution=dist, seed=seeds[i], penalty=penalty))
+            samples.append(language.sample(sequence_length, impose_length_closing=impose_length_closing, 
+                                           distribution=dist, seed=seeds[i], penalty=penalty))
     else:
         for i in range(num_samples):
             samples.append(language.sample(sequence_length, seed=seeds[i]))
@@ -80,6 +81,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--language", type=str, default='Dyck', help="Type of language to sample from, Dyck or ShuffleDyck")
     parser.add_argument("--max_depth", type=int, default=5, help="Maximal depth of sequences")
+    parser.add_argument("--impose_length_closing", action='store_true', help="Impose length closing for Dyck language")
     parser.add_argument("--vocab_size", type=int, default=64, help="Vocabulary size")
     parser.add_argument("--num_samples", type=int, default=10, help="Number of samples to generate")
     parser.add_argument("--sequence_length", type=int, default=10, help="Length of the sequences to generate")
@@ -113,6 +115,7 @@ if __name__ == "__main__":
         args.max_depth,
         args.num_samples, 
         args.sequence_length,
+        args.impose_length_closing,
         args.seed
     )
     
@@ -120,7 +123,7 @@ if __name__ == "__main__":
     tokenized_samples = [tokenizer.encode(sample) for sample in samples]
     
     # Split into batches
-    batches = split_into_batches(tokenized_samples, 1024)
+    batches = split_into_batches(tokenized_samples, args.sequence_length+2)
     print(f"Split samples into {len(batches)} batches")
     
     # Save to output file in jsonl format
@@ -134,6 +137,7 @@ if __name__ == "__main__":
         "opening": opening,
         "closing": closing,
         "max_depth": args.max_depth,
+        "impose_length_closing": args.impose_length_closing,
         "vocab_size": args.vocab_size,
         "sequence_length": args.sequence_length,
         "num_samples": args.num_samples,
