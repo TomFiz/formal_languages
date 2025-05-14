@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J generate_formal_data
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1s
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
 #SBATCH --partition=cpu
 #SBATCH --time=01:00:00
