@@ -21,8 +21,8 @@ mkdir -p ${RESULTS_DIR}/reports
 mkdir -p ${RESULTS_DIR}/plots
 
 # Define temperature and top-k parameters
-TEMPERATURES=(0)
-TOP_K_VALUES=(0)
+TEMPERATURES=(0.0)
+TOP_K_VALUES=(None)
 
 # Part 1: Generate samples for each checkpoint
 cd $LM_DIR
@@ -40,25 +40,22 @@ for CHECKPOINT in "${CHECKPOINTS[@]}"; do
     
     for TEMP in "${TEMPERATURES[@]}"; do
         for TOP_K in "${TOP_K_VALUES[@]}"; do
-            for seed in {0..9}; do
-                # Generate samples with the current parameters
-                echo "Generating samples with seed $seed..."
+            PARAM_STR="temp${TEMP}_topk${TOP_K}"
+            GENERATION_FILE_PATH = "${LM_DIR}/generations/${PARAM_STR}/${STEP}.jsonl"
+            if [ ! -f "${GENERATION_FILE_PATH}" ]; then
+                for seed in {0..3}; do
+                    # Create a unique output file name based on parameters
+                    CHECKPOINT_NAME=$(basename "$CHECKPOINT")
+                    mkdir -p ${LM_DIR}/generations/${PARAM_STR}
                 
-                # Create a unique output file name based on parameters
-                CHECKPOINT_NAME=$(basename "$CHECKPOINT")
-                OUTPUT_FILE="generated_tokens_${STEP}_temp${TEMP}_topk${TOP_K}.jsonl"
-                PARAM_STR="${STEP}_temp${TEMP}_topk${TOP_K}"
-                
-                echo "Generating with temperature=$TEMP, top-k=$TOP_K"
-                python -m lm.generate "$CHECKPOINT" meta-llama/Llama-2-7b-hf \
-                    --prompt="" \
-                    --temperature="$TEMP" \
-                    --top-k="$TOP_K" \
-                    --max_new_tokens=1024 \
-                    --output="$OUTPUT_FILE" \
-                    --seed="$seed"
-                    
-                echo "Generated $OUTPUT_FILE"
+                    echo "Generating with temperature=$TEMP, top-k=$TOP_K, seed=$seed"
+                    python -m lm.generate "$CHECKPOINT" meta-llama/Llama-2-7b-hf \
+                        --prompt="" \
+                        --temperature="$TEMP" \
+                        --max-new-tokens=1024 \
+                        --seed="$seed"
+                    done
+            fi
                 
             # Part 2: Evaluate the generated samples
             cd $FORMAL_DIR
@@ -67,7 +64,7 @@ for CHECKPOINT in "${CHECKPOINTS[@]}"; do
             echo "Evaluating generated sequences..."
             python -m formal_languages.evaluate \
                 --metadata="$METADATA_PATH" \
-                --input="${LM_DIR}/${OUTPUT_FILE}" \
+                --input="${GENERATION_FILE_PATH}" \
                 --output="${RESULTS_DIR}/reports/report_${PARAM_STR}.txt"
                 
             echo "Evaluation complete for $PARAM_STR"
@@ -84,7 +81,7 @@ cd $FORMAL_DIR
 source .venv/bin/activate
 
 # Run the plotting script
-python ${RESULTS_DIR}/plot_evolution.py
+python -m formal_languages.plot_evolution
 
 echo "Evaluation and plotting complete!"
 echo "Results available in ${RESULTS_DIR}"
