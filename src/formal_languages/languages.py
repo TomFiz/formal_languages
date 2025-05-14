@@ -72,7 +72,7 @@ class Dyck(Language):
         assert len(self.opening) == len(set(self.opening)), "Opening brackets must be unique"
         assert len(self.closing) == len(set(self.closing)), "Closing brackets must be unique"
 
-    def sample(self, length: int, seed: Optional[int]) -> str:
+    def sample(self, length: int, seed: Optional[int], impose_length_closing: Optional[bool]=True) -> str:
         """
         Sample a valid Dyck word of the specified length.
         
@@ -90,7 +90,7 @@ class Dyck(Language):
         rd.seed(seed)
 
         while len(sequence) < length:
-            if (stack and rd.random() > self.p) or len(stack) >= min(self.max_depth, length - len(sequence)):
+            if (impose_length_closing and len(stack) >= length - len(sequence)) or (stack and rd.random() > self.p) or len(stack) >= self.max_depth:
                 sequence.append(self.closing[stack.pop()])
             else:
                 opening_index = rd.randint(0, len(self.opening))
@@ -98,6 +98,48 @@ class Dyck(Language):
                 sequence.append(opening_char)
                 stack.append(opening_index)
         return ''.join(sequence)
+    
+
+    def sample_from_length_dist(self, length_dist, seed: Optional[int] = None, impose_length_closing: bool = True) -> str:
+        """
+        Sample a valid Dyck word with length sampled from a given distribution.
+        
+        Args:
+            length_dist: Length distribution, which can be:
+                - A dictionary mapping lengths to probabilities
+                - A list of (length, probability) pairs
+            seed: Random seed for reproducibility
+            impose_length_closing: Whether or not to close backets when the length is close to the maximum length
+            (default: True)
+            
+        Returns:
+            A Dyck word with length sampled from the given distribution
+        """
+        if seed is not None:
+            rd.seed(seed)
+            
+        # Determine the type of distribution provided
+        if isinstance(length_dist, dict):
+            # Dictionary mapping lengths to probabilities
+            lengths = list(length_dist.keys())
+            probs = list(length_dist.values())
+        elif isinstance(length_dist, list) and all(isinstance(item, tuple) and len(item) == 2 for item in length_dist):
+            # List of (length, probability) pairs
+            lengths = [item[0] for item in length_dist]
+            probs = [item[1] for item in length_dist]
+        else:
+            raise ValueError("Unsupported length distribution format")
+        
+        # Normalize probabilities
+        probs = np.array(probs)
+        probs = probs / probs.sum()
+        
+        # Sample a length
+        sampled_length = rd.choice(lengths, p=probs)
+        
+        # Use the existing sample method to generate a sequence of the sampled length
+        return self.sample(length=sampled_length, seed=seed, impose_length_closing=impose_length_closing)
+
 
     def enumerate(self, length: int) -> List[str]:
         """
@@ -167,7 +209,7 @@ class ShuffleDyck(Dyck):
     can match any previous opening bracket of the same type.
     """
     
-    def sample(self, length: int, distribution: Optional[str]="type-uniform", seed: Optional[int]=42, penalty: Optional[float]=1., verbose: Optional[bool]=False) -> str:
+    def sample(self, length: int, impose_length_closing: Optional[bool]=True, distribution: Optional[str]="type-uniform", seed: Optional[int]=42, penalty: Optional[float]=1., verbose: Optional[bool]=False) -> str:
         """
         Sample a valid Shuffle-Dyck word of the specified length.
         
@@ -190,7 +232,7 @@ class ShuffleDyck(Dyck):
         rd.seed(seed)
 
         while len(sequence) < length:
-            if stack and rd.random() > self.p or len(stack) >= min(self.max_depth, length - len(sequence)):
+            if (impose_length_closing and len(stack) >= length - len(sequence)) or (stack and rd.random() > self.p) or len(stack) >= self.max_depth:
                 if distribution == 'type-uniform':
                     # Randomly select a type of opened bracket to close
                     closing_bracket_type = list(set(stack))[rd.randint(0, len(set(stack)))]
@@ -275,3 +317,14 @@ class ShuffleDyck(Dyck):
                     return False
                 counts[self.opening[self.closing.index(char)]] -= 1
         return all(counts[char] == 0 for char in self.opening)
+
+
+sd = ShuffleDyck(opening='([{', closing=')]}', max_depth=6, p=0.5)
+sample = sd.sample(length=10, seed=42, impose_length_closing=True, distribution='type-uniform')
+valid_sample = sd.sample_from_length_dist(length_dist={10: 0.5, 20: 0.3, 40: 0.2}, seed=123, impose_length_closing=True)
+nobodyknows_sample = sd.sample_from_length_dist(length_dist={10: 0.5, 20: 0.3, 40: 0.2}, seed=42, impose_length_closing=False)
+print("Sampled Dyck word:", sample)
+print("Sampled valid Dyck word:", valid_sample)
+print("Valid is valid:", sd.is_valid(valid_sample))
+print("Sampled Dyck word with unknown validity:", nobodyknows_sample)
+print("Sampled Dyck word with unknown validity is valid:", sd.is_valid(nobodyknows_sample))
