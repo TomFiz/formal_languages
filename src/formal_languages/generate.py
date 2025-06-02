@@ -7,16 +7,14 @@ from .languages import Dyck, ShuffleDyck
 def get_vocab(vocab_file, n=64):
     """Generate n unique characters for opening brackets and n for closing brackets."""
     vocab = json.load(open(vocab_file, 'r'))
-    all_chars = list(vocab.keys())
+    all_tokens = list(vocab.keys())
     
     # Ensure we have enough unique characters
-    if len(all_chars) < 2 * n:
-        raise ValueError(f"Cannot generate {n} unique characters for both opening and closing brackets. Maximum is {len(all_chars) // 2}.")
+    if len(all_tokens) < 2 * n:
+        raise ValueError(f"Cannot generate {n} unique characters for both opening and closing brackets. Maximum is {len(all_tokens) // 2}.")
     
-    # Select unique characters for opening and ensure no overlap with closing
-    random.shuffle(all_chars)
-    opening = ''.join(all_chars[2:n+2])
-    closing = ''.join(all_chars[n+2:2*n+2])
+    opening = all_tokens[2:n+2]
+    closing = all_tokens[n+2:2*n+2]
     
     return opening, closing
 
