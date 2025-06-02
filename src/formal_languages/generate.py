@@ -13,14 +13,15 @@ def get_vocab(vocab_file, n=64):
     if len(all_tokens) < 2 * n:
         raise ValueError(f"Cannot generate {n} unique characters for both opening and closing brackets. Maximum is {len(all_tokens) // 2}.")
     
-    opening = all_tokens[2:n+2]
-    closing = all_tokens[n+2:2*n+2]
+    opening = all_tokens[3:n+3]
+    closing = all_tokens[n+3:2*n+3]
     
     return opening, closing
 
 def generate_diverse_samples(language_class, opening, closing, max_depth, num_samples, sequence_length, impose_length_closing, seed=42):
     """Generate diverse samples from the language."""
     language = language_class(opening, closing, max_depth)
+    language.tokenizer.char_to_int = json.load(open("vocab.json", 'r'))
     samples = []
     seeds = list(range(seed, seed + num_samples))
     

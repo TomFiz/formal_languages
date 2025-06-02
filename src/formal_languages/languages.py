@@ -64,7 +64,7 @@ class Dyck(Language):
         self.opening = opening
         self.closing = closing
         self.p = p
-        self.char_to_int = {c: i+2 for i, c in enumerate(opening + closing)}
+        self.char_to_int = {c: i+3 for i, c in enumerate(opening + closing)}
         self.tokenizer = Tokenizer(self.char_to_int)
 
         assert self.max_depth > 0, "Max depth must be positive"
