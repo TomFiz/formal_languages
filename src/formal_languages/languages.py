@@ -17,9 +17,10 @@ class Language:
 class Tokenizer:
     """Utility class for encoding and decoding sequences."""
     
-    def __init__(self, char_to_int: Dict[str, int], bos_token: int, eos_token: int):
+    def __init__(self, char_to_int: Dict[str, int], bos_token: int=1, eos_token: int=2):
         self.char_to_int = char_to_int
         self.int_to_char = {v: k for k, v in char_to_int.items()}
+        self.pad_token = 0
         self.bos_token = bos_token
         self.eos_token = eos_token
 
@@ -63,8 +64,8 @@ class Dyck(Language):
         self.opening = opening
         self.closing = closing
         self.p = p
-        self.char_to_int = {c: i for i, c in enumerate(opening + closing)}
-        self.tokenizer = Tokenizer(self.char_to_int, len(self.char_to_int), len(self.char_to_int) + 1)
+        self.char_to_int = {c: i+2 for i, c in enumerate(opening + closing)}
+        self.tokenizer = Tokenizer(self.char_to_int)
 
         assert self.max_depth > 0, "Max depth must be positive"
         assert self.p >= 0 and self.p <= 1, "Probability p must be between 0 and 1"

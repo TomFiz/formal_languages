@@ -1,18 +1,13 @@
 import argparse
 import random
-import string
 import json
-import numpy as np
 
-from .languages import Dyck, ShuffleDyck, Tokenizer
+from .languages import Dyck, ShuffleDyck
 
-def generate_unique_chars(n):
+def get_vocab(vocab_file, n=64):
     """Generate n unique characters for opening brackets and n for closing brackets."""
-    all_chars = list(string.ascii_letters + string.digits + string.punctuation)
-    # Remove characters that might cause confusion in the output
-    for c in ['(', ')', '[', ']', '{', '}', '<', '>', ' ', '\t', '\n', '"', "'"]:
-        if c in all_chars:
-            all_chars.remove(c)
+    vocab = json.load(open(vocab_file, 'r'))
+    all_chars = list(vocab.keys())
     
     # Ensure we have enough unique characters
     if len(all_chars) < 2 * n:
@@ -94,7 +89,7 @@ if __name__ == "__main__":
     random.seed(args.seed)
     
     # Generate unique opening and closing characters
-    opening, closing = generate_unique_chars(args.vocab_size)
+    opening, closing = get_vocab("./vocab.json",args.vocab_size)
     print(f"Generated opening brackets: '{opening}'")
     print(f"Generated closing brackets: '{closing}'")
     
