@@ -15,8 +15,8 @@ def get_vocab(vocab_file, n=64):
     
     # Select unique characters for opening and ensure no overlap with closing
     random.shuffle(all_chars)
-    opening = ''.join(all_chars[:n])
-    closing = ''.join(all_chars[n:2*n])
+    opening = ''.join(all_chars[2:n+2])
+    closing = ''.join(all_chars[n+2:2*n+2])
     
     return opening, closing
 
