@@ -51,13 +51,14 @@ class Tokenizer:
 class Dyck(Language):
     """Implementation of the Dyck language of balanced parentheses."""
     
-    def __init__(self, opening: str, closing: str, max_depth: int, p: float = 0.5):
+    def __init__(self, opening: str, closing: str, max_depth: int, p: float = 0.5, bias: Optional[Dict[str, float]] = None):
         """      
         Args:
             opening: String of opening bracket characters
             closing: String of closing bracket characters (in matching order with opening)
             max_depth: Maximum nesting depth allowed
             p: Probability of generating an opening bracket during sampling
+            bias: Zipf bias parameters for the opening brackets (default: {"a":0, "b":0})
         """
 
         self.max_depth = max_depth
@@ -66,6 +67,8 @@ class Dyck(Language):
         self.p = p
         self.char_to_int = {c: i+3 for i, c in enumerate(opening + closing)}
         self.tokenizer = Tokenizer(self.char_to_int)
+        self.zypf_a = bias["a"] if bias and "a" in bias else 0
+        self.zypf_b = bias["b"] if bias and "b" in bias else 0
 
         assert self.max_depth > 0, "Max depth must be positive"
         assert self.p >= 0 and self.p <= 1, "Probability p must be between 0 and 1"
@@ -73,13 +76,15 @@ class Dyck(Language):
         assert len(self.opening) == len(set(self.opening)), "Opening brackets must be unique"
         assert len(self.closing) == len(set(self.closing)), "Closing brackets must be unique"
 
-    def sample(self, length: int, seed: Optional[int], impose_length_closing: Optional[bool]=True) -> str:
+    def sample(self, length: int, seed: Optional[int], 
+               impose_length_closing: Optional[bool]=True,) -> str:
         """
         Sample a valid Dyck word of the specified length.
         
         Args:
             length: The length of the sequence to generate
             seed: Random seed for reproducibility
+            impose_length_closing: Whether or not to close brackets when the length is close to the maximum length
             
         Returns:
             A valid Dyck word
@@ -94,7 +99,13 @@ class Dyck(Language):
             if (impose_length_closing and len(stack) >= length - len(sequence)) or (stack and rd.random() > self.p) or len(stack) >= self.max_depth:
                 sequence.append(self.closing[stack.pop()])
             else:
-                opening_index = rd.randint(0, len(self.opening))
+                probs = np.ones(len(self.opening)) / len(self.opening)
+                if self.zypf_a != 0 :
+                    probs = np.zeros(len(self.opening))
+                    for i, opening_char in enumerate(self.opening):
+                        probs[i] = 1/ (i + self.zypf_b + 1e-3) ** self.zypf_a
+                    probs = probs / np.sum(probs)
+                opening_index = rd.choice(len(self.opening), p=probs)
                 opening_char = self.opening[opening_index]
                 sequence.append(opening_char)
                 stack.append(opening_index)
@@ -263,7 +274,13 @@ class ShuffleDyck(Dyck):
                 closing_char = self.closing[closing_index]
                 sequence.append(closing_char)
             else:
-                opening_index = rd.randint(0, len(self.opening))
+                probs = np.ones(len(self.opening)) / len(self.opening)
+                if self.zypf_a != 0 :
+                    probs = np.zeros(len(self.opening))
+                    for i, opening_char in enumerate(self.opening):
+                        probs[i] = 1/ (i + self.zypf_b + 1e-3) ** self.zypf_a
+                    probs = probs / np.sum(probs)
+                opening_index = rd.choice(len(self.opening), p=probs)
                 opening_char = self.opening[opening_index]
                 sequence.append(opening_char)
                 stack.append(opening_index)

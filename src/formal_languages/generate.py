@@ -18,9 +18,9 @@ def get_vocab(vocab_file, n=64):
     
     return opening, closing
 
-def generate_diverse_samples(language_class, opening, closing, max_depth, num_samples, sequence_length, impose_length_closing, seed=42):
+def generate_diverse_samples(language_class, opening, closing, bias, max_depth, num_samples, sequence_length, impose_length_closing, seed=42):
     """Generate diverse samples from the language."""
-    language = language_class(opening, closing, max_depth)
+    language = language_class(opening, closing, max_depth, p=0.5, bias=bias)
     language.tokenizer.char_to_int = json.load(open("vocab.json", 'r'))
     samples = []
     seeds = list(range(seed, seed + num_samples))
@@ -77,6 +77,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_depth", type=int, default=5, help="Maximal depth of sequences")
     parser.add_argument("--impose_length_closing", action='store_true', help="Impose length closing for Dyck language")
     parser.add_argument("--vocab_size", type=int, default=64, help="Vocabulary size")
+    parser.add_argument("--bias_a", type=float, default=0, help="Zipf parameters for biases : a (NL = 1)")
+    parser.add_argument("--bias_b", type=float, default=0, help="Zipf parameters for biases : b (NL = 2.7)")
     parser.add_argument("--num_samples", type=int, default=10, help="Number of samples to generate")
     parser.add_argument("--sequence_length", type=int, default=10, help="Length of the sequences to generate")
     parser.add_argument("--output_file", type=str, default='output.jsonl', help="Output file to save the samples")
@@ -102,10 +104,12 @@ if __name__ == "__main__":
     
     # Generate samples
     print(f"Generating {args.num_samples} samples of {args.sequence_length} length...")
+    bias ={"a": args.bias_a, "b": args.bias_b}
     samples, tokenizer = generate_diverse_samples(
         language_class, 
         opening, 
-        closing, 
+        closing,
+        bias,
         args.max_depth,
         args.num_samples, 
         args.sequence_length,
@@ -131,6 +135,7 @@ if __name__ == "__main__":
         "opening": opening,
         "closing": closing,
         "max_depth": args.max_depth,
+        "bias": bias,
         "impose_length_closing": args.impose_length_closing,
         "vocab_size": args.vocab_size,
         "sequence_length": args.sequence_length,
