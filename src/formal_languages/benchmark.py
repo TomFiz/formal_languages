@@ -239,7 +239,7 @@ def create_benchmark_from_metadata(metadata_path: Path,
         raise ValueError(f"Unsupported language type: {lang_type}")
     
     # Generate benchmark for different sequence lengths
-    sequence_lengths = [2, 4, 8, 16, 32, 64, 128]
+    sequence_lengths = [2, 4, 8, 16, 32, 64, 126]
     
     for k in sequence_lengths:
         print(f"Generating benchmark for sequence length {k}...")
