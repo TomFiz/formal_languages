@@ -195,33 +195,6 @@ class FormalLanguageBenchmark:
                     continue
         
         return benchmark_data
-    
-    def save_benchmark(self, 
-                      output_path: Path,
-                      num_samples_per_perturbation: int = 100,
-                      length_range: Tuple[int, int] = (4, 20),
-                      seed: Optional[int] = 42) -> None:
-        """
-        Generate and save the benchmark to a JSONL file.
-        
-        Args:
-            output_path: Path to save the benchmark file
-            num_samples_per_perturbation: Number of pairs per perturbation
-            length_range: Range of sequence lengths
-            seed: Random seed
-        """
-        benchmark_data = self.generate_benchmark(
-            num_samples_per_perturbation=num_samples_per_perturbation,
-            length_range=length_range,
-            seed=seed
-        )
-        
-        with open(output_path, 'w') as f:
-            for item in benchmark_data:
-                f.write(json.dumps(item) + '\n')
-        
-        print(f"Generated {len(benchmark_data)} benchmark pairs")
-        print(f"Saved to {output_path}")
 
 
 def create_benchmark_from_metadata(metadata_path: Path, 
@@ -268,17 +241,32 @@ def create_benchmark_from_metadata(metadata_path: Path,
     
     # Generate benchmark
     benchmark = FormalLanguageBenchmark(language, metadata)
+    length_range = (4, sequence_length//2)
     
-    # Use fixed sequence length from metadata
-    length_range = (sequence_length, sequence_length)
-    
-    output_path = output_dir / f"{lang_type.lower()}_benchmark.jsonl"
-    benchmark.save_benchmark(
-        output_path=output_path,
+    # Generate full benchmark data
+    benchmark_data = benchmark.generate_benchmark(
         num_samples_per_perturbation=num_samples_per_perturbation,
         length_range=length_range,
         seed=42
     )
+    
+    # Group data by perturbation type
+    perturbation_groups = {}
+    for item in benchmark_data:
+        perturbation = item['linguistics_term']
+        if perturbation not in perturbation_groups:
+            perturbation_groups[perturbation] = []
+        perturbation_groups[perturbation].append(item)
+    
+    # Save separate files for each perturbation
+    for perturbation, items in perturbation_groups.items():
+        output_path = output_dir / f"{lang_type.lower()}_{perturbation}_benchmark.jsonl"
+        with open(output_path, 'w') as f:
+            for item in items:
+                f.write(json.dumps(item) + '\n')
+        
+        print(f"Generated {len(items)} benchmark pairs for {perturbation}")
+        print(f"Saved to {output_path}")
 
 
 if __name__ == "__main__":
