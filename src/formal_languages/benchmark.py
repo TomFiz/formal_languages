@@ -219,7 +219,6 @@ def create_benchmark_from_metadata(metadata_path: Path,
     closing = metadata.get('closing', ')]}')
     max_depth = metadata.get('max_depth', 10)
     bias = metadata.get('bias', None)
-    sequence_length = metadata.get('sequence_length', 128)
     
     # Create language instance based on metadata
     if lang_type.lower() == 'dyck':
@@ -239,42 +238,57 @@ def create_benchmark_from_metadata(metadata_path: Path,
     else:
         raise ValueError(f"Unsupported language type: {lang_type}")
     
-    # Generate benchmark
-    benchmark = FormalLanguageBenchmark(language, metadata)
-    length_range = (4, sequence_length//2)
+    # Generate benchmark for different sequence lengths
+    sequence_lengths = [2, 4, 8, 16, 32, 64, 128]
     
-    # Generate full benchmark data
-    benchmark_data = benchmark.generate_benchmark(
-        num_samples_per_perturbation=num_samples_per_perturbation,
-        length_range=length_range,
-        seed=42
-    )
-    
-    # Group data by perturbation type
-    perturbation_groups = {}
-    for item in benchmark_data:
-        perturbation = item['linguistics_term']
-        if perturbation not in perturbation_groups:
-            perturbation_groups[perturbation] = []
-        perturbation_groups[perturbation].append(item)
-    
-    # Save separate files for each perturbation
-    for perturbation, items in perturbation_groups.items():
-        output_path = output_dir / f"{lang_type.lower()}_{perturbation}_benchmark.jsonl"
-        with open(output_path, 'w') as f:
-            for item in items:
-                f.write(json.dumps(item) + '\n')
+    for k in sequence_lengths:
+        print(f"Generating benchmark for sequence length {k}...")
         
-        print(f"Generated {len(items)} benchmark pairs for {perturbation}")
-        print(f"Saved to {output_path}")
+        # Generate benchmark
+        benchmark = FormalLanguageBenchmark(language, metadata)
+        
+        # Generate benchmark data for this specific length
+        benchmark_data = benchmark.generate_benchmark(
+            num_samples_per_perturbation=num_samples_per_perturbation,
+            length_range=(k, k),
+            seed=42
+        )
+        
+        # Group data by perturbation type
+        perturbation_groups = {}
+        for item in benchmark_data:
+            perturbation = item['linguistics_term']
+            if perturbation not in perturbation_groups:
+                perturbation_groups[perturbation] = []
+            perturbation_groups[perturbation].append(item)
+        
+        # Save separate files for each perturbation and length
+        for perturbation, items in perturbation_groups.items():
+            output_path = output_dir / f"{lang_type.lower()}_{perturbation}_length_{k}_benchmark.jsonl"
+            with open(output_path, 'w') as f:
+                for item in items:
+                    f.write(json.dumps(item) + '\n')
+            
+            print(f"  Generated {len(items)} benchmark pairs for {perturbation} (length {k})")
+            print(f"  Saved to {output_path}")
 
 
 if __name__ == "__main__":
-    # Example usage
+    import argparse
     from pathlib import Path
     
+    parser = argparse.ArgumentParser(description="Generate formal language benchmarks")
+    parser.add_argument("--metadata_path", type=str, required=True,
+                       help="Path to the metadata JSON file")
+    parser.add_argument("--output_dir", type=str, default="benchmarks",
+                       help="Directory to save benchmark files")
+    parser.add_argument("--num_samples", type=int, default=100,
+                       help="Number of samples per perturbation")
+    
+    args = parser.parse_args()
+    
     create_benchmark_from_metadata(
-        metadata_path=Path("metadata.json"),
-        output_dir=Path("benchmarks"),
-        num_samples_per_perturbation=100
+        metadata_path=Path(args.metadata_path),
+        output_dir=Path(args.output_dir),
+        num_samples_per_perturbation=args.num_samples
     )
