@@ -106,7 +106,7 @@ class FormalLanguageBenchmark:
         unopened_closing = self.language.closing[self.language.opening.index(unopened_type)]
         
         # Insert the unopened closing bracket
-        bad_sequence = base_sequence[:pos] + unopened_closing + base_sequence[pos:]
+        bad_sequence = base_sequence[:pos] + unopened_closing + base_sequence[pos+1:]
         
         return base_sequence, bad_sequence
 
