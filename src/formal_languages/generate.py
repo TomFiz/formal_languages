@@ -1,6 +1,7 @@
 import argparse
 import random
 import json
+import numpy as np
 
 from .languages import Dyck, ShuffleDyck
 
@@ -34,8 +35,10 @@ def generate_diverse_samples(language_class, opening, closing, bias, max_depth, 
     samples = []
     seeds = list(range(seed, seed + num_samples))
 
-    probs = [catalan_number(i) for i in [1,2,4,8,16,32]]
-    length = 2*random.choices([1, 2, 4, 8, 16, 32], weights=probs/sum(probs))[0]
+    length_range = [2, 4, 8, 16, 32, 64]
+    probs = np.array([np.log(2*catalan_number(i//2)) for i in length_range])
+    probs = probs/probs.sum()
+    length = random.choices(length_range, weights=probs)[0]
 
     # For ShuffleDyck, use different distribution strategies to increase diversity
     if language_class == ShuffleDyck:
