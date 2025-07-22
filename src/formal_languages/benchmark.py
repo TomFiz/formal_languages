@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 
 from .languages import Dyck, ShuffleDyck, Language
+from .generate import catalan_number
 
 
 class FormalLanguageBenchmark:
@@ -121,7 +122,7 @@ class FormalLanguageBenchmark:
     
     def generate_benchmark(self, 
                           num_samples_per_perturbation: int = 100,
-                          length_range: Tuple[int, int] = (4, 20),
+                          length_range: Tuple[int, int] = (4, 64),
                           seed: Optional[int] = 42) -> List[Dict[str, Any]]:
         """
         Generate the complete benchmark dataset.
@@ -142,6 +143,9 @@ class FormalLanguageBenchmark:
         pair_id = 0
         
         all_perturbations = self.perturbations
+
+        probs = [catalan_number(i//2) for i in length_range]
+        probs /= sum(probs)
         
         for perturbation in all_perturbations:
             generated_pairs = 0
@@ -152,9 +156,10 @@ class FormalLanguageBenchmark:
                 attempts += 1
                 
                 # Generate a base valid sequence
-                length = random.randrange(length_range[0], length_range[1] + 1, 2)  # Even lengths only
+                length = 2*random.choices(length_range, weights=probs)[0]
+
                 try:
-                    base_sequence = self.language.sample(length=length, seed=None)
+                    base_sequence = self.language.sample(length=length, seed=None, distribution='type-uniform')
                     
                     if not self.language.is_valid(base_sequence):
                         continue
@@ -237,40 +242,36 @@ def create_benchmark_from_metadata(metadata_path: Path,
         )
     else:
         raise ValueError(f"Unsupported language type: {lang_type}")
+        
+    print("Generating benchmark...")
     
-    # Generate benchmark for different sequence lengths
-    sequence_lengths = [2, 4, 8, 16, 32, 64]
+    # Generate benchmark
+    benchmark = FormalLanguageBenchmark(language, metadata)
     
-    for k in sequence_lengths:
-        print(f"Generating benchmark for sequence length {k}...")
+    # Generate benchmark data for this specific length
+    benchmark_data = benchmark.generate_benchmark(
+        num_samples_per_perturbation=num_samples_per_perturbation,
+        length_range=[4, 8, 16, 32, 64],
+        seed=None
+    )
+    
+    # Group data by perturbation type
+    perturbation_groups = {}
+    for item in benchmark_data:
+        perturbation = item['linguistics_term']
+        if perturbation not in perturbation_groups:
+            perturbation_groups[perturbation] = []
+        perturbation_groups[perturbation].append(item)
+    
+    # Save separate files for each perturbation and length
+    for perturbation, items in perturbation_groups.items():
+        output_path = output_dir / f"{lang_type.lower()}_{perturbation}_new_benchmark.jsonl"
+        with open(output_path, 'w') as f:
+            for item in items:
+                f.write(json.dumps(item) + '\n')
         
-        # Generate benchmark
-        benchmark = FormalLanguageBenchmark(language, metadata)
-        
-        # Generate benchmark data for this specific length
-        benchmark_data = benchmark.generate_benchmark(
-            num_samples_per_perturbation=num_samples_per_perturbation,
-            length_range=(k, k),
-            seed=42
-        )
-        
-        # Group data by perturbation type
-        perturbation_groups = {}
-        for item in benchmark_data:
-            perturbation = item['linguistics_term']
-            if perturbation not in perturbation_groups:
-                perturbation_groups[perturbation] = []
-            perturbation_groups[perturbation].append(item)
-        
-        # Save separate files for each perturbation and length
-        for perturbation, items in perturbation_groups.items():
-            output_path = output_dir / f"{lang_type.lower()}_{perturbation}_length_{k}_benchmark.jsonl"
-            with open(output_path, 'w') as f:
-                for item in items:
-                    f.write(json.dumps(item) + '\n')
-            
-            print(f"  Generated {len(items)} benchmark pairs for {perturbation} (length {k})")
-            print(f"  Saved to {output_path}")
+        print(f"  Generated {len(items)} benchmark pairs for {perturbation} (new version)")
+        print(f"  Saved to {output_path}")
 
 
 if __name__ == "__main__":

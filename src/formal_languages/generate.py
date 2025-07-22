@@ -4,6 +4,15 @@ import json
 
 from .languages import Dyck, ShuffleDyck
 
+def catalan_number(n):
+    """Calculate the nth Catalan number (for Dyck words of length 2n)."""
+    if n == 0:
+        return 1
+    catalan = 1
+    for i in range(n):
+        catalan = catalan * (2 * (2 * i + 1)) // (i + 2)
+    return catalan
+
 def get_vocab(vocab_file, n=64):
     """Generate n unique characters for opening brackets and n for closing brackets."""
     vocab = json.load(open(vocab_file, 'r'))
@@ -24,40 +33,47 @@ def generate_diverse_samples(language_class, opening, closing, bias, max_depth, 
     language.tokenizer.char_to_int = json.load(open("vocab.json", 'r'))
     samples = []
     seeds = list(range(seed, seed + num_samples))
-    
+
+    probs = [catalan_number(i) for i in [1,2,4,8,16,32]]
+    length = 2*random.choices([1, 2, 4, 8, 16, 32], weights=probs/sum(probs))[0]
+
     # For ShuffleDyck, use different distribution strategies to increase diversity
     if language_class == ShuffleDyck:
-        distributions = ['type-uniform', 'bracket-uniform', 'length-penalty']
+        distributions = [
+                         'type-uniform', 
+                        #  'bracket-uniform', 
+                        #  'length-penalty',
+                         ]
         penalties = [0.5, 1.0, 2.0]
         
         for i in range(num_samples):
             dist = distributions[i % len(distributions)]
             penalty = penalties[(i // len(distributions)) % len(penalties)] if dist == 'length-penalty' else 1.0
-            samples.append(language.sample(sequence_length, impose_length_closing=impose_length_closing, 
+            samples.append(language.sample(length, impose_length_closing=impose_length_closing, 
                                            distribution=dist, seed=seeds[i], penalty=penalty))
     else:
         for i in range(num_samples):
-            samples.append(language.sample(sequence_length, seed=seeds[i]))
-    
+            samples.append(language.sample(length, seed=seeds[i]))
+
     return samples, language.tokenizer
 
-def split_into_batches(token_sequences, batch_size=1024):
-    """Split tokenized sequences into batches."""
+def split_into_batches(token_sequences, batch_size=128):
+    """
+    Split tokenized sequences into batches of exactly batch_size tokens.
+    Sequences can be cut in the middle if necessary.
+    """
     batches = []
-    current_batch = []
-    current_size = 0
     
+    # Flatten all sequences into one long sequence with separators
+    all_tokens = []
     for seq in token_sequences:
-        if current_size + len(seq) > batch_size:
-            batches.append(current_batch)
-            current_batch = [seq]
-            current_size = len(seq)
-        else:
-            current_batch.append(seq)
-            current_size += len(seq)
+        all_tokens.extend(seq)
     
-    if current_batch:
-        batches.append(current_batch)
+    # Split into batches of exactly batch_size
+    for i in range(0, len(all_tokens), batch_size):
+        batch = all_tokens[i:i + batch_size]
+        if len(batch) == batch_size:  # Only keep full batches
+            batches.append(batch)
     
     return batches
 
@@ -121,7 +137,7 @@ if __name__ == "__main__":
     tokenized_samples = [tokenizer.encode(sample) for sample in samples]
     
     # Split into batches
-    batches = split_into_batches(tokenized_samples, args.sequence_length+2)
+    batches = split_into_batches(tokenized_samples, 128)
     print(f"Split samples into {len(batches)} batches")
     
     # Save to output file in jsonl format
