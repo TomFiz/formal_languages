@@ -144,8 +144,8 @@ class FormalLanguageBenchmark:
         
         all_perturbations = self.perturbations
 
-        probs = [catalan_number(i//2) for i in length_range]
-        probs = np.array(probs) / sum(probs)
+        probs = np.array([np.log(catalan_number(i//2)) for i in length_range])
+        probs = probs/probs.sum()
         
         for perturbation in all_perturbations:
             generated_pairs = 0
@@ -156,7 +156,7 @@ class FormalLanguageBenchmark:
                 attempts += 1
                 
                 # Generate a base valid sequence
-                length = 2*random.choices(length_range, weights=probs)[0]
+                length = random.choices(length_range, weights=probs)[0]
 
                 try:
                     base_sequence = self.language.sample(length=length, seed=None, distribution='type-uniform')
