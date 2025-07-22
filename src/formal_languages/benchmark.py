@@ -144,7 +144,7 @@ class FormalLanguageBenchmark:
         
         all_perturbations = self.perturbations
 
-        probs = np.array([np.log(catalan_number(i//2)) for i in length_range])
+        probs = np.array([np.log(2*catalan_number(i//2)) for i in length_range])
         probs = probs/probs.sum()
         
         for perturbation in all_perturbations:
@@ -159,7 +159,7 @@ class FormalLanguageBenchmark:
                 length = random.choices(length_range, weights=probs)[0]
 
                 try:
-                    base_sequence = self.language.sample(length=length, seed=None, distribution='type-uniform')
+                    base_sequence = self.language.sample(length=length, seed=None)
                     
                     if not self.language.is_valid(base_sequence):
                         continue
