@@ -145,7 +145,7 @@ class FormalLanguageBenchmark:
         all_perturbations = self.perturbations
 
         probs = [catalan_number(i//2) for i in length_range]
-        probs /= sum(probs)
+        probs = probs/sum(probs)
         
         for perturbation in all_perturbations:
             generated_pairs = 0
